@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="zh-CN" class="h-full">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>SnapDownloader</title>
+    
+    <link rel="preconnect" href="https://telegram.org">
+    <link rel="preconnect" href="https://cdn.tailwindcss.com">
+    
+    <script src="https://telegram.org/js/telegram-web-app.js" defer></script>
+    <script src="https://cdn.tailwindcss.com" defer></script>
+    
+    <script>
+        window.addEventListener('DOMContentLoaded', () => {
+            tailwind.config = { darkMode: 'class' };
+        });
+    </script>
+    
+    <style>
+        html, body {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            padding-top: env(safe-area-inset-top); padding-bottom: env(safe-area-inset-bottom);
+            padding-left: env(safe-area-inset-left); padding-right: env(safe-area-inset-right);
+            overflow: hidden; 
+            transition: background-color 0.25s ease, color 0.25s ease;
+        }
+
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes scaleIn { from { opacity: 0; transform: scale(0.95); } to { opacity: 1; transform: scale(1); } }
+        @keyframes shine { 100% { left: 125%; } }
+        
+        .animate-fadeIn { animation: fadeIn 0.24s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
+        .animate-scaleIn { animation: scaleIn 0.28s cubic-bezier(0.34, 1.56, 0.64, 1) forwards; }
+        .scrollbar-none::-webkit-scrollbar { display: none; }
+        .scrollbar-none { -ms-overflow-style: none; scrollbar-width: none; }
+
+        .h-22 { height: 88px; }
+        .p-4\.5 { padding: 1.125rem; }
+        .w-8\.5 { width: 34px; } .h-8\.5 { height: 34px; }
+        .w-4\.5 { width: 18px; } .h-4\.5 { height: 18px; }
+    </style>
+</head>
+<body class="bg-[#f8f9fa] text-zinc-900 dark:bg-[#030304] dark:text-zinc-100 antialiased h-full w-full">
+
+    <div class="flex flex-col h-full w-full relative overflow-hidden">
+        
+        <header class="h-14 w-full flex items-center justify-between px-4 bg-white/85 dark:bg-[#030304]/80 backdrop-blur-md border-b border-zinc-200/80 dark:border-zinc-900/60 shadow-xs dark:shadow-none z-40 transition-colors">
+            <div class="flex items-center space-x-2">
+                <span class="relative flex h-2 w-2">
+                    <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span class="relative inline-flex rounded-full h-2 w-2 bg-emerald-500 shadow-[0_0_8px_#10b981]"></span>
+                </span>
+                <h1 class="text-sm font-black tracking-wide text-zinc-800 dark:text-zinc-100">SnapDownloader</h1>
+            </div>
+            
+            <div class="flex items-center space-x-2.5">
+                <div id="fallback-theme-slot" class="flex items-center"></div>
+
+                <button onclick="window.AppMethods.toggleLanguage()" class="w-7 h-7 flex items-center justify-center rounded-full bg-zinc-200/50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-emerald-500 transition-all active:scale-90 focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 21a9.004 9.004 0 008.716-6.747M12 21a9.004 9.004 0 01-8.716-6.747M12 21c2.485 0 4.5-4.03 4.5-9S14.485 3 12 3m0 18c-2.485 0-4.5-4.03-4.5-9s2.015-9 4.5-9m0 0a9.001 9.001 0 018.716 2.253M12 3a9.001 9.001 0 00-8.716 2.253M12 12h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                </button>
+                
+                <div data-i18n="badge_speed" class="text-[10px] font-bold text-emerald-600 dark:text-emerald-400 bg-emerald-500/10 border border-emerald-500/20 px-2 py-0.5 rounded-full shadow-[0_0_10px_rgba(16,185,129,0.02)]">极速直连</div>
+            </div>
+        </header>
+
+        <main class="flex-1 overflow-y-auto relative px-4 py-4 pb-24 scrollbar-none">
+            
+            <div id="view-home" class="animate-fadeIn flex flex-col space-y-4">
+                
+                <div class="relative group bg-white dark:bg-gradient-to-r dark:from-purple-950/20 dark:via-[#0a0618] dark:to-zinc-950 rounded-[20px] p-3.5 border border-zinc-200/60 dark:border-purple-500/10 shadow-xs dark:shadow-md overflow-hidden cursor-pointer transition-colors"
+                     onclick="window.AppMethods.showToast(i18n[AppState.lang].toast_copied, 'success')">
+                    <div data-i18n="sponsor_tag" class="absolute top-0 right-0 bg-purple-600/90 text-[8px] font-black text-white px-2.5 py-0.5 rounded-bl-[10px] tracking-wider">赞助</div>
+                    <div class="flex items-center space-x-3">
+                        <div class="w-9 h-9 rounded-[12px] bg-purple-500/10 flex items-center justify-center text-lg shadow-inner">🍉</div>
+                        <div class="flex-1 min-w-0">
+                            <h4 data-i18n="sponsor_title" class="text-[12px] font-bold text-purple-950 dark:text-purple-200 truncate">新鲜水果生鲜到家，送你188元专属神券</h4>
+                            <p data-i18n="sponsor_desc" class="text-[9.5px] text-purple-700/80 dark:text-purple-400/80 mt-0.5 truncate">点击领券立享周边半小时内极速妥投服务</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white dark:bg-zinc-950/80 border border-zinc-200/80 dark:border-zinc-900/60 rounded-[28px] p-4.5 space-y-3.5 shadow-md dark:shadow-lg transition-colors">
+                    <div class="flex items-center justify-between text-[11px] text-zinc-400 dark:text-zinc-500 pb-2.5 border-b border-zinc-100 dark:border-zinc-900/60 font-bold">
+                        <span class="flex items-center text-emerald-600 dark:text-emerald-400/90">
+                            <span class="w-4.5 h-4.5 rounded-full bg-emerald-500 text-black text-[10px] font-black flex items-center justify-center mr-1.5">1</span>
+                            <span data-i18n="step_1">输入或粘贴链接</span>
+                        </span>
+                        <div class="w-8 h-px bg-zinc-100 dark:bg-zinc-900"></div>
+                        <span class="flex items-center text-purple-600 dark:text-purple-400/90">
+                            <span class="w-4.5 h-4.5 rounded-full bg-purple-500 text-white text-[10px] font-black flex items-center justify-center mr-1.5">2</span>
+                            <span data-i18n="step_2">高速无水印解析</span>
+                        </span>
+                    </div>
+
+                    <div class="relative">
+                        <textarea id="inputUrl" class="w-full h-22 bg-zinc-50 dark:bg-[#0c0c10]/90 text-[13px] p-3.5 pb-12 pr-20 rounded-[18px] border border-zinc-200 dark:border-zinc-900 focus:outline-none focus:border-emerald-500/70 text-zinc-800 dark:text-zinc-200 placeholder-zinc-400 dark:placeholder-zinc-650 resize-none transition-all leading-relaxed"></textarea>
+                        <button onclick="window.AppMethods.handleSmartPaste()" class="absolute right-2 bottom-2 bg-zinc-100 hover:bg-zinc-200 dark:bg-zinc-900 dark:hover:bg-zinc-850 active:scale-95 text-zinc-600 dark:text-zinc-300 hover:text-zinc-900 dark:hover:text-white px-2.5 py-1 rounded-[10px] text-[10px] font-bold flex items-center space-x-1 border border-zinc-200/80 dark:border-zinc-800/80 transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-6 9l2 2 4-4" /></svg>
+                            <span data-i18n="btn_paste">智能粘贴</span>
+                        </button>
+                    </div>
+
+                    <button onclick="window.AppMethods.handleStartParseClick()" class="w-full bg-gradient-to-r from-emerald-500 to-teal-500 hover:from-emerald-400 hover:to-teal-400 active:scale-98 text-black font-extrabold text-[14px] py-3.5 rounded-[18px] flex items-center justify-center space-x-1.5 shadow-[0_4px_15px_rgba(16,185,129,0.12)] transition-all duration-200 relative overflow-hidden group focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                        <div class="absolute -inset-y-0 -inset-x-12 w-12 bg-white/20 skew-x-12 group-hover:animate-shine group-hover:bg-white/30 transition-all pointer-events-none"></div>
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" /></svg>
+                        <span data-i18n="btn_extract" class="tracking-wide">开始原流提取</span>
+                    </button>
+                </div>
+
+                <div class="py-0.5">
+                    <div class="flex gap-1.5 overflow-x-auto pb-1.5 scrollbar-none">
+                        <div class="flex-shrink-0 text-[9.5px] font-bold px-2.5 py-1 rounded-[8px] bg-white dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-600 dark:text-zinc-300">抖音</div>
+                        <div class="flex-shrink-0 text-[9.5px] font-bold px-2.5 py-1 rounded-[8px] bg-zinc-800 dark:bg-black border border-zinc-700 dark:border-zinc-800 text-white dark:text-zinc-300">TikTok</div>
+                        <div class="flex-shrink-0 text-[9.5px] font-bold px-2.5 py-1 rounded-[8px] bg-red-50 dark:bg-red-950/20 text-red-600 dark:text-red-400 border border-red-200 dark:border-red-900/30">小红书</div>
+                        <div class="flex-shrink-0 text-[9.5px] font-bold px-2.5 py-1 rounded-[8px] bg-orange-50 dark:bg-orange-950/20 text-orange-600 dark:text-orange-400 border border-orange-200 dark:border-orange-900/30">快手</div>
+                        <div class="flex-shrink-0 text-[9.5px] font-bold px-2.5 py-1 rounded-[8px] bg-red-50 dark:bg-red-900/10 text-red-500 dark:text-red-350 border border-red-100 dark:border-red-900/20">微博</div>
+                        <div class="flex-shrink-0 text-[9.5px] font-bold px-2.5 py-1 rounded-[8px] bg-pink-50 dark:bg-pink-950/20 text-pink-500 dark:text-pink-400 border border-pink-100 dark:border-pink-900/20">哔哩哔哩</div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 gap-3">
+                    <button onclick="window.AppMethods.openDrawer('drawer-tutorial')" class="w-full text-left bg-white dark:bg-zinc-950/40 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-900 rounded-[20px] p-3.5 flex items-center space-x-3 cursor-pointer group transition-all shadow-2xs focus:outline-none focus:ring-2 focus:ring-zinc-500 outline-none">
+                        <div class="w-8.5 h-8.5 rounded-[12px] bg-orange-500/10 text-orange-500 dark:text-orange-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" /></svg>
+                        </div>
+                        <div class="min-w-0">
+                            <h5 data-i18n="tool_tutorial" class="text-[12px] font-bold text-zinc-800 dark:text-zinc-200">使用教程</h5>
+                            <p data-i18n="tool_tutorial_desc" class="text-[9px] text-zinc-400 dark:text-zinc-500 mt-0.5">轻松取链不踩坑</p>
+                        </div>
+                    </button>
+
+                    <button onclick="window.AppMethods.openDrawer('drawer-history')" class="w-full text-left bg-white dark:bg-zinc-950/40 hover:bg-zinc-50 dark:hover:bg-zinc-900/30 border border-zinc-200 dark:border-zinc-900 rounded-[20px] p-3.5 flex items-center space-x-3 cursor-pointer group transition-all shadow-2xs focus:outline-none focus:ring-2 focus:ring-zinc-500 outline-none">
+                        <div class="w-8.5 h-8.5 rounded-[12px] bg-blue-500/10 text-blue-500 dark:text-blue-400 flex items-center justify-center flex-shrink-0 group-hover:scale-105 transition-transform">
+                            <svg class="w-4.5 h-4.5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" /></svg>
+                        </div>
+                        <div class="min-w-0">
+                            <h5 data-i18n="tool_history" class="text-[12px] font-bold text-zinc-800 dark:text-zinc-200">历史记录</h5>
+                            <p data-i18n="tool_history_desc" class="text-[9px] text-zinc-400 dark:text-zinc-500 mt-0.5">本地免流重下载</p>
+                        </div>
+                    </button>
+                </div>
+
+                <div class="bg-zinc-100 dark:bg-zinc-950/30 rounded-[16px] p-2.5 border border-zinc-200/40 dark:border-zinc-900/30 text-center transition-colors">
+                    <p class="text-[9px] text-zinc-500 dark:text-zinc-600 leading-normal">
+                        <span data-i18n="disclaimer">视频归原作者所有，本小程序提供无损原流安全提取沙盒演示。</span>
+                        <a onclick="window.AppMethods.openDrawer('drawer-privacy')" class="text-purple-600 dark:text-purple-400 font-bold underline cursor-pointer ml-1" data-i18n="item_privacy">权限管理与隐私政策</a>
+                    </p>
+                </div>
+            </div>
+
+            <div id="view-mine" class="animate-fadeIn hidden flex flex-col space-y-4">
+                <div class="relative bg-white dark:bg-black border border-zinc-200 dark:border-zinc-900 rounded-[26px] p-4 shadow-sm dark:shadow-[0_8px_32px_rgba(0,0,0,0.5)] overflow-hidden transition-colors">
+                    <div data-i18n="whitelist_tag" class="absolute top-0 right-0 bg-emerald-500 text-black text-[9px] font-black px-2.5 py-0.5 rounded-bl-[12px] rounded-tr-[26px] tracking-wider">白名单用户</div>
+                    <div class="flex items-center space-x-3.5 pb-3.5">
+                        <div class="w-11 h-11 rounded-full border border-emerald-500/30 bg-zinc-100 dark:bg-zinc-900/60 flex items-center justify-center text-xl shadow-xs">👤</div>
+                        <div class="flex flex-col">
+                            <span data-i18n="user_demo" class="text-[13px] font-bold text-zinc-800 dark:text-zinc-100">Telegram 演示用户</span>
+                            <span class="text-[10px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">UID: 202699812</span>
+                        </div>
+                    </div>
+                    <div class="h-px bg-zinc-100 dark:bg-zinc-900/80 w-full mb-3"></div>
+                    <div class="flex flex-col">
+                        <div class="flex justify-between items-center text-[10.5px] text-zinc-500 dark:text-zinc-400 mb-2 font-medium">
+                            <span data-i18n="download_quota">本日剩余无水印高速下载频次</span>
+                            <span class="text-emerald-600 dark:text-emerald-400 font-black text-[11px]">9,953 / 10,000</span>
+                        </div>
+                        <div class="w-full h-1 bg-zinc-200 dark:bg-zinc-900 rounded-full overflow-hidden">
+                            <div class="h-full bg-emerald-500 rounded-full w-[99.5%] shadow-[0_0_6px_#10b981]"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-white border border-zinc-200 dark:bg-zinc-950/40 dark:border-zinc-900 rounded-[20px] overflow-hidden flex flex-col shadow-2xs transition-colors">
+                    <div onclick="window.AppMethods.openDrawer('drawer-support')" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer border-b border-zinc-100 dark:border-zinc-900/60 text-[12px] text-zinc-700 dark:text-zinc-300 font-bold group">
+                        <span data-i18n="mine_support">💬 在线技术客服</span>
+                        <svg class="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-650 group-hover:text-zinc-900 dark:group-hover:text-zinc-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    </div>
+                    <div onclick="window.AppMethods.openDrawer('drawer-settings')" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer text-[12.5px] text-zinc-700 dark:text-zinc-300 font-bold group">
+                        <span data-i18n="mine_settings">⚙️ 全局系统设置</span>
+                        <svg class="w-3.5 h-3.5 text-zinc-400 dark:text-zinc-650 group-hover:text-zinc-900 dark:group-hover:text-zinc-400 transition-colors" fill="none" stroke="currentColor" stroke-width="2.5" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" /></svg>
+                    </div>
+                </div>
+
+                <div onclick="window.AppMethods.openDrawer('drawer-vip')" class="bg-gradient-to-r from-amber-500/10 to-orange-500/10 border border-amber-500/30 rounded-[18px] p-3.5 text-center cursor-pointer active:scale-99 transition-all group shadow-2xs">
+                    <h4 data-i18n="upgrade_premium" class="text-[12px] font-black text-amber-600 dark:text-amber-400 tracking-wide group-hover:text-amber-500 transition-colors">🌟 升级纯净白金通道 (永久免除广告)</h4>
+                    <p data-i18n="upgrade_stars" class="text-[9.5px] text-zinc-500 dark:text-zinc-500 mt-1">支持 Telegram Stars 极速安全支付</p>
+                </div>
+            </div>
+        </main>
+
+        <div id="modal-loading" class="fixed inset-0 bg-zinc-900/40 dark:bg-black/95 backdrop-blur-xs z-50 flex flex-col items-center justify-center hidden">
+            <div class="relative w-24 h-24 flex items-center justify-center animate-scaleIn">
+                <div class="absolute inset-0 rounded-full border-2 border-dashed border-emerald-500 animate-spin"></div>
+                <span id="loading-percentage" class="text-emerald-600 dark:text-emerald-400 font-mono font-black text-xl">0%</span>
+            </div>
+            <p id="loading-text" class="text-zinc-600 dark:text-zinc-400 text-[11px] mt-5 tracking-wide font-bold">🔍 正在嗅探原始 CDN 资源地址...</p>
+        </div>
+
+        <div id="modal-ad" class="fixed inset-0 bg-[#f8f9fa] dark:bg-[#030304] z-50 flex flex-col p-4 hidden">
+            <div class="flex items-center justify-between h-12 border-b border-zinc-200 dark:border-zinc-900/60 pb-1">
+                <span data-i18n="ad_sponsor_title" class="text-zinc-500 dark:text-zinc-400 text-xs font-bold tracking-wide">赞助商特权高速流下发</span>
+                <div id="ad-action-container" class="flex items-center"></div>
+            </div>
+            <div class="flex-1 flex flex-col items-center justify-center my-4 animate-scaleIn">
+                <div class="w-full max-w-[270px] bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-900 rounded-[24px] p-5 flex flex-col items-center space-y-4 shadow-xl">
+                    <div class="text-4xl animate-bounce">⚔️</div>
+                    <div class="text-center">
+                        <h3 data-i18n="ad_game_title" class="text-zinc-800 dark:text-zinc-100 font-black text-sm">《极限深渊：求生狂潮》</h3>
+                        <p data-i18n="ad_game_desc" class="text-zinc-400 dark:text-zinc-500 text-[9.5px] mt-1">2026年度免安装一键爽玩割草防守神作</p>
+                    </div>
+                    <div class="w-full bg-zinc-50 border border-zinc-100 dark:bg-[#0c0c10] dark:border-zinc-900 rounded-[14px] p-3 text-center text-[11px] text-emerald-600 dark:text-emerald-400 font-mono tracking-tighter h-14 flex items-center justify-center overflow-hidden">
+                        <span class="animate-pulse font-bold">💥 EXP +9999 | 金币 +100W 🔥</span>
+                    </div>
+                    <button data-i18n="ad_game_play" class="w-full bg-amber-500 text-black font-black text-xs py-2.5 rounded-[12px] focus:outline-none focus:ring-2 focus:ring-amber-500 outline-none">免安装一键爽玩</button>
+                </div>
+            </div>
+            <div class="text-center pb-6">
+                <p data-i18n="ad_footer_tip" class="text-[9.5px] text-zinc-400 dark:text-zinc-600 leading-relaxed max-w-[240px] mx-auto">由于无损源视频下行消耗极高，支持 5 秒赞助商广告即可享受 VIP 线路</p>
+            </div>
+        </div>
+
+        <div id="modal-result" class="fixed inset-0 bg-[#f8f9fa] dark:bg-[#030304] z-50 flex flex-col p-4 overflow-y-auto hidden scrollbar-none">
+            <div id="result-dynamic-content" class="flex-1 flex flex-col space-y-4 pb-4 animate-fadeIn"></div>
+            <div class="pt-2">
+                <button onclick="window.AppMethods.resetParsePipeline()" data-i18n="result_btn_next" class="w-full bg-white text-zinc-800 border border-zinc-200 dark:bg-zinc-900 dark:border-zinc-800 dark:text-zinc-200 dark:hover:text-white font-extrabold text-xs py-3.5 rounded-[16px] shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">继续解析新链接</button>
+            </div>
+        </div>
+
+        <div id="modal-error" class="fixed inset-0 bg-black/60 backdrop-blur-xs z-50 flex items-center justify-center hidden">
+            <div class="w-[280px] bg-white dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 rounded-[24px] p-5 flex flex-col items-center text-center space-y-4 shadow-2xl animate-scaleIn">
+                <div class="w-12 h-12 rounded-full bg-red-500/10 text-red-500 flex items-center justify-center text-2xl shadow-inner">⚠️</div>
+                <div>
+                    <h4 data-i18n="error_modal_title" class="text-zinc-800 dark:text-zinc-100 font-black text-sm">系统高倍异常拦截</h4>
+                    <p id="error-modal-reason" class="text-zinc-400 dark:text-zinc-500 text-[11px] mt-1.5 leading-relaxed font-medium">--</p>
+                </div>
+                <div class="flex flex-col space-y-2 w-full pt-1">
+                    <button onclick="window.AppMethods.retryParsePipeline()" data-i18n="error_modal_retry" class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black font-black text-xs py-2.5 rounded-[12px] outline-none">重新尝试</button>
+                    <button onclick="window.AppMethods.closeDrawer('modal-error'); window.AppMethods.openDrawer('drawer-support');" data-i18n="error_modal_contact" class="w-full bg-zinc-100 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-300 font-bold text-xs py-2.5 rounded-[12px] outline-none">联系客服</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="drawer-tutorial" class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-xs z-50 flex items-end justify-center hidden">
+            <div class="w-full bg-white border-t border-zinc-200 dark:bg-[#09090b] dark:border-zinc-900 rounded-t-[28px] p-5 space-y-4 animate-fadeIn max-h-[85vh] overflow-y-auto scrollbar-none relative">
+                <button onclick="window.AppMethods.closeDrawer('drawer-tutorial')" class="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white text-xs outline-none">✕</button>
+                <h3 data-i18n="drawer_tutorial_title" class="text-zinc-800 dark:text-zinc-100 font-black text-sm pt-1">📖 平台链接提取与解析指南</h3>
+                <div class="flex flex-col space-y-2.5 text-[12px] text-zinc-600 dark:text-zinc-300">
+                    <div class="flex items-start bg-zinc-50 dark:bg-[#0c0c10] p-3 border border-zinc-200 dark:border-zinc-900 rounded-[14px]">
+                        <span class="text-orange-500 font-bold mr-2.5">1️⃣</span><p data-i18n="drawer_tutorial_s1" class="leading-normal">打开目标 App（如抖音、小红书、TikTok），找到下载画作，点击分享面板。</p>
+                    </div>
+                    <div class="flex items-start bg-zinc-50 dark:bg-[#0c0c10] p-3 border border-zinc-200 dark:border-zinc-900 rounded-[14px]">
+                        <span class="text-orange-500 font-bold mr-2.5">2️⃣</span><p data-i18n="drawer_tutorial_s2" class="leading-normal">点击 “复制链接”，直到系统气泡提示复制成功。</p>
+                    </div>
+                    <div class="flex items-start bg-zinc-50 dark:bg-[#0c0c10] p-3 border border-zinc-200 dark:border-zinc-900 rounded-[14px]">
+                        <span class="text-orange-500 font-bold mr-2.5">3️⃣</span><p data-i18n="drawer_tutorial_s3" class="leading-normal">返回本小程序，点击 “智能粘贴”，随后触发原流提权即可。</p>
+                    </div>
+                </div>
+                <button onclick="window.AppMethods.closeDrawer('drawer-tutorial')" data-i18n="drawer_tutorial_btn" class="w-full bg-zinc-900 border border-zinc-800 text-zinc-200 font-bold text-xs py-3.5 rounded-[16px] outline-none dark:bg-zinc-800 focus:outline-none focus:ring-2 focus:ring-zinc-500">我知道了</button>
+            </div>
+        </div>
+
+        <div id="drawer-history" class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-xs z-50 flex items-end justify-center hidden">
+            <div class="w-full bg-white border-t border-zinc-200 dark:bg-[#09090b] dark:border-zinc-900 rounded-t-[28px] p-5 space-y-4 animate-fadeIn max-h-[85vh] overflow-y-auto scrollbar-none relative">
+                <button onclick="window.AppMethods.closeDrawer('drawer-history')" class="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white text-xs outline-none">✕</button>
+                <h3 data-i18n="drawer_history_title" class="text-zinc-800 dark:text-zinc-100 font-black text-sm pt-1">⏳ 本地免流解析历史</h3>
+                <div id="history-list-container" class="flex flex-col space-y-2.5 overflow-y-auto max-h-[45vh] scrollbar-none"></div>
+            </div>
+        </div>
+
+        <div id="drawer-settings" class="fixed inset-0 bg-[#f8f9fa] dark:bg-[#030304] z-50 flex flex-col hidden animate-fadeIn text-zinc-800 dark:text-zinc-100">
+            <header class="h-14 w-full flex items-center justify-between px-4 bg-white dark:bg-[#030304] border-b border-zinc-200/80 dark:border-zinc-900/60 shadow-2xs">
+                <button onclick="window.AppMethods.closeDrawer('drawer-settings')" class="flex items-center space-x-1.5 text-xs font-black text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 transition-colors focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <span data-i18n="settings_back">← 返回</span>
+                </button>
+                <h3 data-i18n="settings_title" class="text-sm font-black tracking-wide">系统设置</h3>
+                <div class="w-12"></div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none">
+                <div class="space-y-1.5">
+                    <div data-i18n="group_display" class="text-[10.5px] font-black text-zinc-400 dark:text-zinc-500 pl-1 tracking-wider uppercase">显示与偏好</div>
+                    <div class="bg-white border border-zinc-200 dark:bg-zinc-950/40 dark:border-zinc-900 rounded-[20px] overflow-hidden flex flex-col shadow-2xs">
+                        <div onclick="window.AppMethods.handleSettingsThemeClick()" class="flex items-center justify-between px-4 py-3.5 border-b border-zinc-100 dark:border-zinc-900/60 text-[12px] font-bold active:bg-zinc-50 dark:active:bg-zinc-900/30 cursor-pointer">
+                            <span data-i18n="item_theme">外观主题</span>
+                            <span id="label-active-theme" class="text-[10px] font-black bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-md font-mono">--</span>
+                        </div>
+                        <div onclick="window.AppMethods.toggleLanguage()" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer text-[12px] font-bold">
+                            <span data-i18n="item_lang">界面语言</span>
+                            <span id="label-active-lang" class="text-[10px] font-black bg-zinc-100 dark:bg-zinc-900 text-zinc-500 dark:text-zinc-400 px-2.5 py-0.5 rounded-md">--</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <div data-i18n="group_download" class="text-[10.5px] font-black text-zinc-400 dark:text-zinc-500 pl-1 tracking-wider uppercase">下载与存储</div>
+                    <div class="bg-white border border-zinc-200 dark:bg-zinc-950/40 dark:border-zinc-900 rounded-[20px] overflow-hidden flex flex-col shadow-2xs">
+                        <div onclick="window.AppMethods.showToast(i18n[AppState.lang].toast_quality, 'light')" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer border-b border-zinc-100 dark:border-zinc-900/60 text-[12px] font-bold">
+                            <span data-i18n="item_quality">默认解析画质</span>
+                            <span data-i18n="label_quality" class="text-[10px] font-black bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 px-2.5 py-0.5 rounded-md">4K 无损</span>
+                        </div>
+                        <div onclick="window.AppMethods.showToast(i18n[AppState.lang].toast_path, 'light')" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer text-[12px] font-bold">
+                            <span data-i18n="item_path">文件下载位置</span>
+                            <span class="text-[10.5px] font-mono text-zinc-400 dark:text-zinc-500">/TG_Downloads &gt;</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="space-y-1.5">
+                    <div data-i18n="group_data" class="text-[10.5px] font-black text-zinc-400 dark:text-zinc-500 pl-1 tracking-wider uppercase">数据与安全</div>
+                    <div class="bg-white border border-zinc-200 dark:bg-zinc-950/40 dark:border-zinc-900 rounded-[20px] overflow-hidden flex flex-col shadow-2xs">
+                        <div onclick="window.AppMethods.handleSettingsClearCache()" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer border-b border-zinc-100 dark:border-zinc-900/60 text-[12px] font-bold">
+                            <span data-i18n="item_cache">清除本地缓存</span>
+                            <span class="text-[10.5px] font-mono text-zinc-400 dark:text-zinc-500">0.42 MB</span>
+                        </div>
+                        <div onclick="window.AppMethods.openDrawer('drawer-privacy')" class="flex items-center justify-between px-4 py-3.5 active:bg-zinc-100 dark:active:bg-zinc-900/40 transition-colors cursor-pointer text-[12px] font-bold">
+                            <span data-i18n="item_privacy">权限管理与隐私政策</span>
+                            <span class="text-zinc-300 dark:text-zinc-700 font-mono text-xs">&gt;</span>
+                        </div>
+                    </div>
+                </div>
+            </main>
+        </div>
+
+        <div id="drawer-support" class="fixed inset-0 bg-black/40 dark:bg-black/60 backdrop-blur-xs z-50 flex items-end justify-center hidden">
+            <div class="w-full bg-white border-t border-zinc-200 Lords-Box dark:bg-[#09090b] dark:border-zinc-900 rounded-t-[28px] p-5 space-y-4 animate-fadeIn max-h-[85vh] overflow-y-auto scrollbar-none relative">
+                <button onclick="window.AppMethods.closeDrawer('drawer-support')" class="absolute top-4 right-4 w-6 h-6 rounded-full bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 flex items-center justify-center text-zinc-400 dark:text-zinc-500 hover:text-zinc-800 dark:hover:text-white text-xs outline-none">✕</button>
+                <h3 data-i18n="drawer_support_title" class="text-zinc-800 dark:text-zinc-100 font-black text-sm pt-1">💬 在线客服与用户反馈</h3>
+                
+                <div class="space-y-3 text-left">
+                    <label data-i18n="drawer_support_cat_title" class="text-[11px] font-black text-zinc-400 uppercase tracking-wide">选择问题分类</label>
+                    <div class="grid grid-cols-3 gap-2">
+                        <button onclick="window.AppMethods.selectSupportCat(this)" class="bg-zinc-50 dark:bg-zinc-950 border border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold py-2 rounded-xl text-[11px] transition-all focus:outline-none" data-i18n="drawer_support_cat_1">解析失败</button>
+                        <button onclick="window.AppMethods.selectSupportCat(this)" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 text-zinc-600 dark:text-zinc-400 py-2 rounded-xl text-[11px] transition-all focus:outline-none" data-i18n="drawer_support_cat_2">下载无音轨</button>
+                        <button onclick="window.AppMethods.selectSupportCat(this)" class="bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 text-zinc-600 dark:text-zinc-400 py-2 rounded-xl text-[11px] transition-all focus:outline-none" data-i18n="drawer_support_cat_3">广告拦截卡死</button>
+                    </div>
+                    <textarea id="supportDetail" class="w-full h-20 bg-zinc-50 dark:bg-[#0c0c10] border border-zinc-200 dark:border-zinc-900 rounded-xl p-3 text-[11.5px] focus:outline-none focus:border-emerald-500 text-zinc-800 dark:text-zinc-200 resize-none" placeholder="请详细描述您遇到的故障，以便技术人员精准定位..."></textarea>
+                    
+                    <div onclick="window.AppMethods.copyServiceId()" class="bg-zinc-50 border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-900 p-3 rounded-xl flex items-center justify-between cursor-pointer active:opacity-70 transition-opacity">
+                        <div class="flex items-center space-x-2"><span class="text-base">✈️</span><span class="text-[11.5px] font-bold" data-i18n="drawer_support_copy_card">复制官方客服 Telegram ID</span></div>
+                        <span class="text-[11px] font-mono font-bold text-zinc-400">@Snap_Premium_Bot</span>
+                    </div>
+                </div>
+                <button onclick="window.AppMethods.submitSupportFeedback()" data-i18n="drawer_support_submit" class="w-full bg-zinc-900 dark:bg-zinc-100 text-white dark:text-black font-black text-xs py-3.5 rounded-[16px] outline-none">一键提交反馈</button>
+            </div>
+        </div>
+
+        <div id="drawer-vip" class="fixed inset-0 bg-[#f8f9fa] dark:bg-[#030304] z-50 flex flex-col hidden animate-fadeIn text-zinc-800 dark:text-zinc-100">
+            <header class="h-14 w-full flex items-center justify-between px-4 border-b border-zinc-200/80 dark:border-zinc-900/60 bg-white dark:bg-[#030304]">
+                <button onclick="window.AppMethods.closeDrawer('drawer-vip')" class="flex items-center space-x-1.5 text-xs font-black text-zinc-500 dark:text-zinc-400 hover:text-amber-500 transition-colors outline-none"><span data-i18n="settings_back">← 返回</span></button>
+                <h3 data-i18n="drawer_vip_title" class="text-sm font-black tracking-wide text-amber-600 dark:text-amber-400">🌟 升级纯净白金通道</h3>
+                <div class="w-12"></div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-4 space-y-4 scrollbar-none text-center">
+                <div class="bg-gradient-to-b from-amber-500/10 via-amber-500/5 to-transparent rounded-[24px] p-5 border border-amber-500/20 shadow-xs">
+                    <span class="text-4xl">👑</span>
+                    <h4 data-i18n="drawer_vip_title" class="text-sm font-black mt-2 text-amber-600 dark:text-amber-400">升级纯净白金通道</h4>
+                    <p data-i18n="drawer_vip_subtitle" class="text-[10px] text-zinc-400 dark:text-zinc-500 mt-1">尊享极致的原视频全无损提权沙盒体验</p>
+                </div>
+                
+                <div class="space-y-1.5 text-left">
+                    <div data-i18n="drawer_vip_feature_title" class="text-[10.5px] font-black text-zinc-400 uppercase tracking-wide pl-1">权益对比</div>
+                    <div class="bg-white border border-zinc-200 dark:bg-zinc-950/40 dark:border-zinc-900 rounded-[20px] p-3.5 space-y-2.5 text-xs font-bold shadow-2xs">
+                        <div class="flex justify-between pb-2 border-b border-zinc-100 dark:border-zinc-900 text-zinc-400"><div class="w-1/2"></div><span class="w-1/4 text-center" data-i18n="drawer_vip_free">免费版</span><span class="w-1/4 text-center text-amber-500" data-i18n="drawer_vip_premium">白金版</span></div>
+                        <div class="flex justify-between items-center"><span class="w-1/2 text-zinc-600 dark:text-zinc-300" data-i18n="drawer_vip_f1">4K 无损画质直出</span><span class="w-1/4 text-center text-zinc-400">720P</span><span class="w-1/4 text-center text-amber-500">4K Raw</span></div>
+                        <div class="flex justify-between items-center"><span class="w-1/2 text-zinc-600 dark:text-zinc-300" data-i18n="drawer_vip_f2">永久免除 5 秒广告</span><span class="w-1/4 text-center text-zinc-400">❌</span><span class="w-1/4 text-center text-emerald-500">✅</span></div>
+                        <div class="flex justify-between items-center"><span class="w-1/2 text-zinc-600 dark:text-zinc-300" data-i18n="drawer_vip_f3">无限制高并发解析</span><span class="w-1/4 text-center text-zinc-400">10次/天</span><span class="w-1/4 text-center text-emerald-500">∞ 次</span></div>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-2.5 pt-1">
+                    <button onclick="window.AppMethods.triggerStarsPay(50)" class="bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-900 rounded-[18px] p-3 flex flex-col items-center shadow-2xs focus:ring-2 focus:ring-amber-500 outline-none">
+                        <span class="text-base">⭐️</span><span class="text-[12px] font-black text-zinc-800 dark:text-zinc-200 mt-1">50 Stars</span><span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-0.5" data-i18n="drawer_vip_tier_1">/月</span>
+                    </button>
+                    <button onclick="window.AppMethods.triggerStarsPay(120)" class="bg-white border-2 border-amber-500/60 dark:bg-zinc-950 rounded-[18px] p-3 flex flex-col items-center relative shadow-sm focus:ring-2 focus:ring-amber-500 outline-none">
+                        <div class="absolute -top-2 bg-amber-500 text-black text-[7.5px] font-black px-1.5 py-0.5 rounded-full uppercase tracking-tighter">HOT</div>
+                        <span class="text-base">⭐️</span><span class="text-[12px] font-black text-amber-600 dark:text-amber-400 mt-1">120 Stars</span><span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-0.5" data-i18n="drawer_vip_tier_2">/季</span>
+                    </button>
+                    <button onclick="window.AppMethods.triggerStarsPay(500)" class="bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-900 rounded-[18px] p-3 flex flex-col items-center shadow-2xs focus:ring-2 focus:ring-amber-500 outline-none">
+                        <span class="text-base">💎</span><span class="text-[12px] font-black text-zinc-800 dark:text-zinc-200 mt-1">500 Stars</span><span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 mt-0.5" data-i18n="drawer_vip_tier_3">/永久</span>
+                    </button>
+                </div>
+                <p class="text-[8.5px] text-zinc-400 dark:text-zinc-650 max-w-[260px] mx-auto pt-2 leading-relaxed">
+                    购买前请查阅并充分知悉 <a onclick="window.AppMethods.openDrawer('drawer-privacy')" class="underline font-bold text-zinc-500 dark:text-zinc-400 cursor-pointer" data-i18n="item_privacy">权限管理与隐私政策</a>。所有 Stars 代币结算均由 Telegram 官方去中心化网关提供安全防御支撑。
+                </p>
+            </main>
+        </div>
+
+        <div id="drawer-privacy" class="fixed inset-0 bg-[#f8f9fa] dark:bg-[#030304] z-50 flex flex-col hidden animate-fadeIn text-zinc-800 dark:text-zinc-100">
+            <header class="h-14 w-full flex items-center justify-between px-4 border-b border-zinc-200/80 dark:border-zinc-900/60 bg-white dark:bg-[#030304] shadow-2xs">
+                <button onclick="window.AppMethods.closeDrawer('drawer-privacy')" class="flex items-center space-x-1.5 text-xs font-black text-zinc-500 dark:text-zinc-400 hover:text-emerald-500 transition-colors outline-none"><span data-i18n="settings_back">← 返回</span></button>
+                <h3 data-i18n="drawer_privacy_title" class="text-sm font-black tracking-wide">隐私政策与服务条款</h3>
+                <div class="w-12"></div>
+            </header>
+            <main class="flex-1 overflow-y-auto p-4 text-[10.5px] text-zinc-500 dark:text-zinc-400 space-y-3 font-medium leading-relaxed scrollbar-none text-left">
+                <p class="font-black text-zinc-700 dark:text-zinc-300 text-xs">Legal Disclaimer / 法律免责声明声明：</p>
+                <div data-i18n="drawer_privacy_doc" class="space-y-2">
+                    <p>1. 本演示沙盒技术软件方案所涉及到一切提取、元数据特征码重构能力，仅作为原生纯前端及 Python FastAPI 异步下行并发线路的技术演示、临床抗压测试之用。SnapDownloader 不会在云端托管或物理存储任何属于第三方的流媒体视频 and 图片包源资产。</p>
+                    <p>2. 用户通过多行交互文本域所引入的所有外部音视频提取链接，其原始著作权与完整产权，均无条件归属于所属源平台的合法权利人或原作者。用户需独立确保自身行为完全符合原平台的服务守则及司法管辖区法律。</p>
+                    <p>3. 订阅通道涉及的 Telegram Stars 结算，属于演示阶段的虚拟流测试扣除。一经拉起并清算成功，系统将永久、无缝为当前绑定的 Telegram UID 激活白金免广告特权节点下行加速配置，所有涉及纠纷受官方审计体系保护。</p>
+                </div>
+                <div class="h-12"></div>
+            </main>
+        </div>
+
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-40">
+            <nav class="w-[180px] h-12 bg-white/90 border border-zinc-200/80 dark:bg-[#09090b]/90 dark:border-zinc-800/40 rounded-full flex items-center justify-around px-1 backdrop-blur-xl shadow-lg dark:shadow-[0_12px_40px_rgba(0,0,0,0.7)] transition-colors">
+                <button id="tab-home" onclick="window.AppMethods.switchTab('home')" class="relative flex flex-col items-center justify-center w-14 h-9 transition-all duration-200 text-emerald-600 dark:text-emerald-400 scale-105 focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" /></svg>
+                    <span class="indicator-dot absolute -bottom-1 w-1 h-1 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981] animate-pulse"></span>
+                </button>
+                <button id="tab-mine" onclick="window.AppMethods.switchTab('mine')" class="relative flex flex-col items-center justify-center w-14 h-9 transition-all duration-200 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-400 scale-100 focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" /></svg>
+                    <span class="indicator-dot absolute -bottom-1 w-1 h-1 bg-emerald-500 rounded-full shadow-[0_0_6px_#10b981] animate-pulse hidden"></span>
+                </button>
+            </nav>
+        </div>
+
+    </div>
+
+    <script>
+        (function(global) {
+            
+            // 🛡️ [终局新增：环境配置大总管] - 严格集中管理冻结，严禁运行时人为篡改破坏
+            const AppConfig = Object.freeze({
+                API_BASE_URL: "", // 🚀 留空占位，便于后续 Python FastAPI 生产服务器域名一键无缝接入
+                TIMEOUT: 15000,    // 15秒熔断强防线
+                MAX_HISTORY: 10
+            });
+
+            function escapeHTML(str) {
+                if (!str) return '';
+                return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+            }
+
+            // 全局 i18n 基础配置项区块（已连根清洗高级图集与无损下发文案项）
+            const i18n = {
+                zh: {
+                    input_placeholder: "请粘贴支持的平台分享链接...",
+                    badge_speed: "极速直连",
+                    btn_paste: "智能粘贴",
+                    btn_extract: "开始原流提取",
+                    tool_tutorial: "使用教程",
+                    tool_tutorial_desc: "轻松取链不踩坑",
+                    tool_history: "历史记录",
+                    tool_history_desc: "本地免流重下载",
+                    toast_unlocked: "✨ 线路无损流成功解锁！",
+                    toast_copied: "📋 复制成功！",
+                    toast_pasted: "📋 自动提取粘贴成功！",
+                    history_empty: "暂无历史提取沙盒数据记录"
+                },
+                en: {
+                    input_placeholder: "Paste supported platform sharing link here...",
+                    badge_speed: "Direct Speed",
+                    btn_paste: "Smart Paste",
+                    btn_extract: "Extract Original Stream",
+                    tool_tutorial: "User Tutorial",
+                    tool_tutorial_desc: "Get links without traps",
+                    tool_history: "History Logs",
+                    tool_history_desc: "Free re-download locally",
+                    toast_unlocked: "✨ Lossless stream unlocked!",
+                    toast_copied: "📋 Copied successfully!",
+                    toast_pasted: "📋 Smart pasted!",
+                    history_empty: "No local history records found"
+                }
+            };
+
+            const tg = window.Telegram?.WebApp;
+            const isTelegramEnv = !!(tg && tg.initData);
+
+            const AppState = {
+                lang: localStorage.getItem('snap_lang') || 'zh',
+                theme: localStorage.getItem('snap_theme') || 'dark', 
+                activeTab: 'home',
+                isParsing: false,
+                adCountdown: 5,
+                selectedSupportCat: 'failed' // 记录意见反馈当前的选中态
+            };
+
+            const TimerManager = {
+                parse: null, ad: null, toast: null, md5: null,
+                clearAll: function() {
+                    clearInterval(this.parse); clearInterval(this.ad);
+                    clearTimeout(this.toast); clearInterval(this.md5);
+                }
+            };
+
+            if (tg) { tg.ready(); tg.expand(); }
+
+            const Haptics = {
+                light: () => { if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('light'); },
+                medium: () => { if(tg?.HapticFeedback) tg.HapticFeedback.impactOccurred('medium'); },
+                success: () => { if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('success'); },
+                warning: () => { if(tg?.HapticFeedback) tg.HapticFeedback.notificationOccurred('warning'); }
+            };
+
+            // 🛡️ [终局重构：统一高级 API 通信网络拦截网关]
+            async function request(url, options = {}) {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), AppConfig.TIMEOUT);
+                
+                // 全自动安全注入 Telegram initData 身份凭证用于 Python FastAPI 后端高并发高危鉴权
+                options.headers = Object.assign({
+                    "Content-Type": "application/json",
+                    "Authorization": tg ? (tg.initData || "") : ""
+                }, options.headers || {});
+                options.signal = controller.signal;
+
+                // 临床试验 Mock 通信拦截泵
+                return new Promise((resolve, reject) => {
+                    signalListener = () => {
+                        clearTimeout(timeoutId);
+                        reject({ status: 'TIMEOUT', message: 'ERROR: Request timed out over 15000ms. Aborted.' });
+                    };
+                    controller.signal.addEventListener('abort', signalListener);
+
+                    setTimeout(() => {
+                        clearTimeout(timeoutId);
+                        const bodyStr = options.body ? String(options.body) : '';
+                        
+                        // 🚀 核心体检暗号 1：拦截到红线风控 500
+                        if (bodyStr.includes('error500')) {
+                            reject({ status: 500, message: 'Internal Server Error (500) Code: 0xFA98B' });
+                            return;
+                        }
+                        // 🚀 核心体检暗号 2：强行触发 15 秒超时熔断
+                        if (bodyStr.includes('timeout')) {
+                            signalListener();
+                            return;
+                        }
+                        // 正常 Mock 响应
+                        resolve({ status: 200, data: { success: true } });
+                    }, 1200); // 模拟网络交互时延
+                });
+            }
+
+            function applyThemeOutput() {
+                if (isTelegramEnv && tg) { AppState.theme = (tg.colorScheme === 'dark') ? 'dark' : 'light'; }
+                if (AppState.theme === 'dark') document.documentElement.classList.add('dark');
+                else document.documentElement.classList.remove('dark');
+                
+                const themeLabel = document.getElementById('label-active-theme');
+                if (themeLabel) {
+                    if (isTelegramEnv) themeLabel.textContent = i18n[AppState.lang].theme_auto;
+                    else themeLabel.textContent = (AppState.theme === 'dark') ? i18n[AppState.lang].label_theme_dark : i18n[AppState.lang].label_theme_light;
+                }
+                updateFallbackHeaderThemeIcon();
+            }
+
+            function setupFallbackThemeButton() {
+                const slot = document.getElementById('fallback-theme-slot');
+                if (!isTelegramEnv && slot) {
+                    slot.innerHTML = `<button onclick="window.AppMethods.toggleManualTheme()" class="w-7 h-7 flex items-center justify-center rounded-full bg-zinc-200/50 dark:bg-zinc-900 text-zinc-600 dark:text-zinc-400 hover:text-emerald-500 transition-all active:scale-90 focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none mr-1" id="manual-theme-trigger"></button>`;
+                    updateFallbackHeaderThemeIcon();
+                } else if (slot) { slot.innerHTML = ''; }
+            }
+
+            function updateFallbackHeaderThemeIcon() {
+                const btn = document.getElementById('manual-theme-trigger'); if (!btn) return;
+                if (AppState.theme === 'dark') btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m12.728 0l-.707-.707M6.343 6.343l-.707-.707M14 12a2 2 0 11-4 0 2 2 0 014 0z" /></svg>`;
+                else btn.innerHTML = `<svg class="w-4 h-4" fill="none" stroke="currentColor" stroke-width="2" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" d="M20.354 15.354A9 9 0 018.646 3.646 9.003 9.003 0 0012 21a9.003 9.003 0 008.354-5.646z" /></svg>`;
+            }
+
+            if (isTelegramEnv && tg) tg.onEvent('themeChanged', applyThemeOutput);
+
+            function applyI18n() {
+                document.querySelectorAll('[data-i18n]').forEach(el => {
+                    const key = el.getAttribute('data-i18n');
+                    if (i18n[AppState.lang][key]) el.textContent = i18n[AppState.lang][key];
+                });
+                document.getElementById('inputUrl').placeholder = i18n[AppState.lang].input_placeholder;
+                document.getElementById('label-active-lang').textContent = (AppState.lang === 'zh') ? '简体中文' : 'English';
+                applyThemeOutput(); 
+            }
+
+            function showToast(msg, hapticType = 'light') {
+                Haptics[hapticType]();
+                const toast = document.getElementById('toast');
+                document.getElementById('toast-text').textContent = msg;
+                if (toast.classList.contains('hidden')) toast.classList.remove('hidden');
+                clearTimeout(TimerManager.toast);
+                TimerManager.toast = setTimeout(() => toast.classList.add('hidden'), 2200);
+            }
+
+            async function handleSmartPaste() {
+                Haptics.medium();
+                if (tg?.readTextFromClipboard) {
+                    tg.readTextFromClipboard((text) => {
+                        if (text) {
+                            document.getElementById('inputUrl').value = text;
+                            showToast(i18n[AppState.lang].toast_pasted, 'success');
+                        } else doFallbackClipboard();
+                    });
+                } else doFallbackClipboard();
+            }
+            async function doFallbackClipboard() {
+                try {
+                    const text = await navigator.clipboard.readText();
+                    if (text) {
+                        document.getElementById('inputUrl').value = text;
+                        showToast(i18n[AppState.lang].toast_pasted, 'success');
+                    } else throw new Error();
+                } catch (err) { showToast(i18n[AppState.lang].toast_paste_fail, 'warning'); }
+            }
+
+            function getSafeHistory() {
+                try {
+                    const localData = localStorage.getItem('snap_history');
+                    return localData ? JSON.parse(localData) : [];
+                } catch(e) {
+                    localStorage.setItem('snap_history', '[]'); return [];
+                }
+            }
+
+            function appendHistory(type, title, desc, cover) {
+                let history = getSafeHistory();
+                history.unshift({ id: Date.now(), type, title, desc, cover });
+                if (history.length > AppConfig.MAX_HISTORY) history = history.slice(0, AppConfig.MAX_HISTORY);
+                try { localStorage.setItem('snap_history', JSON.stringify(history)); } catch(e) {}
+            }
+
+            function renderHistoryList() {
+                const history = getSafeHistory();
+                const container = document.getElementById('history-list-container');
+                if (history.length === 0) {
+                    container.innerHTML = `<div class="text-center text-zinc-500 text-xs py-6 font-mono">${i18n[AppState.lang].history_empty}</div>`;
+                    return;
+                }
+                container.innerHTML = history.map(h => `
+                    <div class="bg-zinc-50 border border-zinc-200 dark:bg-[#0c0c10] dark:border-zinc-900 p-3 rounded-[16px] flex items-center justify-between">
+                        <div class="flex items-center space-x-2.5 min-w-0">
+                            <div class="w-10 h-10 rounded-md overflow-hidden bg-zinc-800 flex-shrink-0 relative">
+                                <img src="${escapeHTML(h.cover)}" loading="lazy" class="w-full h-full object-cover opacity-80" alt="cover">
+                                <div class="absolute inset-0 flex items-center justify-center text-xs">${h.type=='video' ? '🎬' : '📸'}</div>
+                            </div>
+                            <div class="min-w-0">
+                                <h4 class="text-[11.5px] font-bold text-zinc-700 dark:text-zinc-200 truncate">${escapeHTML(h.title)}</h4>
+                                <p class="text-[9px] text-zinc-400 dark:text-zinc-500 font-mono mt-0.5">${escapeHTML(h.desc)}</p>
+                            </div>
+                        </div>
+                        <button onclick="window.AppMethods.triggerHistoryReExtract('${escapeHTML(h.type)}')" class="text-[10px] font-bold text-zinc-600 dark:text-zinc-400 bg-zinc-150/80 border border-zinc-300 dark:bg-zinc-900 dark:border-zinc-800 px-3 py-1 rounded-full outline-none focus:ring-2 focus:ring-zinc-400 flex-shrink-0">${i18n[AppState.lang].drawer_history_btn_re || '重新提取'}</button>
+                    </div>
+                `).join('');
+            }
+
+            // 🛡️ [状态机全链路异步改造对接点]
+            async function handleStartParseClick() {
+                Haptics.medium();
+                const urlInput = document.getElementById('inputUrl').value.trim();
+                if (!urlInput) { showToast(i18n[AppState.lang].toast_empty, 'warning'); return; }
+
+                TimerManager.clearAll();
+                AppState.isParsing = true;
+                document.getElementById('modal-loading').classList.remove('hidden');
+                document.getElementById('loading-percentage').textContent = '0%';
+                document.getElementById('loading-text').textContent = i18n[AppState.lang].loading_s1;
+
+                // 🚀 调用全新网络总线网关（切入 await 请求语法糖，完美预留 FastAPI 对接槽）
+                try {
+                    await request('/api/v1/extract', { method: 'POST', body: urlInput });
+                    
+                    // 以下纯作为轻量级交互表现层状态机运转
+                    let percent = 0;
+                    TimerManager.parse = setInterval(() => {
+                        percent += 2;
+                        document.getElementById('loading-percentage').textContent = `${percent}%`;
+                        const texts = [i18n[AppState.lang].loading_s1, i18n[AppState.lang].loading_s2, i18n[AppState.lang].loading_s3, i18n[AppState.lang].loading_s4];
+                        document.getElementById('loading-text').textContent = texts[Math.min(3, Math.floor(percent/25))];
+
+                        if (percent >= 100) {
+                            clearInterval(TimerManager.parse);
+                            setTimeout(() => {
+                                document.getElementById('modal-loading').classList.add('hidden');
+                                launchAdPipeline(); 
+                            }, 400);
+                        }
+                    }, 20); // 提速缩容展示
+                } catch (err) {
+                    // 🚀 异常拦截器全面捕获，熔断阻断 Loading，将真实失败原因抛给警示弹窗
+                    document.getElementById('modal-loading').classList.add('hidden');
+                    Haptics.warning();
+                    
+                    const reasonEl = document.getElementById('error-modal-reason');
+                    if (err.status === 'TIMEOUT') {
+                        reasonEl.textContent = AppState.lang === 'zh' ? '🚨 云端下行流量发生严重拥堵，接口包超时熔断！' : '🚨 Cloud gateway traffic jammed. Request timeout aborted.';
+                    } else {
+                        reasonEl.textContent = `🚨 [HTTP ${err.status}] ${err.message || 'Unknown network exception'}`;
+                    }
+                    document.getElementById('modal-error').classList.remove('hidden');
+                }
+            }
+
+            function launchAdPipeline() {
+                Haptics.light(); AppState.adCountdown = 5;
+                document.getElementById('modal-ad').classList.remove('hidden');
+                const container = document.getElementById('ad-action-container');
+                container.innerHTML = `<span id="ad-countdown-tag" class="text-[10px] bg-zinc-100 dark:bg-zinc-900 border border-zinc-200 dark:border-zinc-800 text-zinc-500 dark:text-zinc-400 px-2.5 py-1 rounded-full font-mono font-bold">⏳ ${i18n[AppState.lang].ad_remaining} 5 s</span>`;
+
+                TimerManager.ad = setInterval(() => {
+                    AppState.adCountdown--;
+                    const tag = document.getElementById('ad-countdown-tag');
+                    if (tag) tag.textContent = `⏳ ${i18n[AppState.lang].ad_remaining} ${AppState.adCountdown} s`;
+
+                    if (AppState.adCountdown <= 0) {
+                        clearInterval(TimerManager.ad); Haptics.success();
+                        container.innerHTML = `<button onclick="window.AppMethods.renderFinalResultPanel('auto')" class="text-[10px] bg-emerald-500 text-black font-black px-3 py-1 rounded-full animate-pulse shadow-[0_0_10px_#10b981] focus:ring-2 focus:ring-emerald-500 outline-none">${i18n[AppState.lang].ad_skip}</button>`;
+                    }
+                }, 1000);
+            }
+
+            function renderFinalResultPanel(resultData) {
+                Haptics.medium();
+                document.getElementById('modal-ad').classList.add('hidden');
+                document.getElementById('modal-result').classList.remove('hidden');
+                showToast(i18n[AppState.lang].toast_unlocked, 'success');
+
+                if (!resultData) return;
+
+                const dContainer = document.getElementById('result-dynamic-content');
+                
+                const safeTitle = escapeHTML(resultData.title || '');
+                const safeSize = escapeHTML(resultData.size || '');
+                const safeCover = escapeHTML(resultData.cover || '');
+
+                const buttonsHtml = (resultData.actions || []).map(action => {
+                    const isPrimary = action.type === 'primary';
+                    const safeLabel = escapeHTML(action.label || '');
+                    
+                    const btnClass = isPrimary 
+                        ? "w-full bg-gradient-to-r from-emerald-500 to-teal-500 text-black font-black text-xs py-3.5 rounded-[14px] shadow-sm transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 outline-none"
+                        : "w-full bg-zinc-100 hover:bg-zinc-200 text-zinc-700 dark:bg-zinc-900 dark:hover:bg-zinc-850 border border-zinc-200 dark:border-zinc-800 dark:text-zinc-300 font-bold text-xs py-3.5 rounded-[14px] transition-colors focus:ring-2 focus:ring-zinc-400 outline-none";
+                    
+                    return `<button onclick="window.AppMethods.showToast('✨ ${safeLabel}成功！', 'success')" class="${btnClass}">${safeLabel}</button>`;
+                }).join('');
+
+                if (resultData.type === 'gallery') {
+                    const mediaCount = parseInt(resultData.mediaCount) || 0;
+                    dContainer.innerHTML = `
+                        <div class="bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-900 rounded-[24px] p-4 flex flex-col space-y-3 shadow-md mt-2 transition-colors">
+                            <div>
+                                <h3 class="text-zinc-800 dark:text-zinc-100 font-black text-sm tracking-wide">${safeTitle}</h3>
+                                <p class="text-zinc-400 dark:text-zinc-500 text-[9.5px] mt-1 font-mono">${safeSize}</p>
+                            </div>
+                            <div class="w-full h-36 bg-zinc-100 dark:bg-zinc-900 rounded-[16px] overflow-hidden relative border border-zinc-200 dark:border-zinc-850">
+                                <img src="${safeCover}" loading="lazy" class="w-full h-full object-cover opacity-80" alt="Cover">
+                                <div class="absolute bottom-2 right-2 bg-black/70 backdrop-blur-md text-[9px] text-zinc-300 px-2 py-0.5 rounded-md font-mono font-bold">${mediaCount} PICS</div>
+                            </div>
+                            <div class="flex flex-col space-y-2 pt-1">
+                                ${buttonsHtml}
+                            </div>
+                        </div>
+                    `;
+                } else {
+                    dContainer.innerHTML = `
+                        <div class="bg-white border border-zinc-200 dark:bg-zinc-950 dark:border-zinc-900 rounded-[24px] p-4 flex flex-col space-y-3 shadow-md mt-2 transition-colors">
+                            <div class="flex flex-col space-y-1">
+                                <h3 class="text-zinc-800 dark:text-zinc-100 font-black text-sm tracking-wide">${safeTitle}</h3>
+                                <span class="text-[9.5px] text-zinc-400 dark:text-zinc-500 font-mono">${safeSize}</span>
+                            </div>
+                            <div class="w-full h-40 bg-zinc-100 dark:bg-zinc-900 rounded-[16px] overflow-hidden relative border border-zinc-200 dark:border-zinc-850 flex items-center justify-center">
+                                <img src="${safeCover}" loading="lazy" class="w-full h-full object-cover opacity-70" alt="Video">
+                                <div class="absolute w-10 h-10 rounded-full bg-black/60 border border-zinc-700 flex items-center justify-center text-zinc-100 shadow-md">
+                                    <svg class="w-3.5 h-3.5 fill-current ml-0.5" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+                                </div>
+                            </div>
+                            <div class="flex flex-col space-y-2 pt-1">
+                                ${buttonsHtml}
+                            </div>
+                        </div>
+                    `;
+                }
+            }
+
+            function resetParsePipeline() {
+                Haptics.light(); TimerManager.clearAll(); AppState.isParsing = false;
+                document.getElementById('modal-result').classList.add('hidden');
+                document.getElementById('inputUrl').value = '';
+                showToast(i18n[AppState.lang].toast_ready, 'light');
+            }
+
+            // 在高保真 UI 通用交互层中声明注入
+            function openDrawer(id) { 
+                Haptics.light(); if(id==='drawer-history') renderHistoryList(); 
+                document.getElementById(id).classList.remove('hidden'); 
+            }
+            function closeDrawer(id) { Haptics.light(); document.getElementById(id).classList.add('hidden'); }
+
+            // 方法对外集成网关
+            global.AppMethods = {
+                triggerStarsPay: async function(starAmount) {
+                    Haptics.medium();
+                    showToast(i18n[AppState.lang].toast_vip_paying, 'success');
+                    try {
+                        await request('/api/v1/payment/stars', { method: 'POST', body: JSON.stringify({ amount: starAmount }) });
+                    } catch(e) {}
+                },
+                retryParsePipeline: function() {
+                    closeDrawer('modal-error');
+                    handleStartParseClick();
+                },
+                selectSupportCat: function(btnElement) {
+                    Haptics.light();
+                    btnElement.parentNode.querySelectorAll('button').forEach(b => {
+                        b.className = "bg-zinc-50 dark:bg-zinc-950 border border-zinc-200 dark:border-zinc-900 text-zinc-600 dark:text-zinc-400 py-2 rounded-xl text-[11px] transition-all";
+                    });
+                    btnElement.className = "bg-zinc-50 dark:bg-zinc-950 border border-emerald-500 text-emerald-600 dark:text-emerald-400 font-bold py-2 rounded-xl text-[11px] transition-all";
+                },
+                submitSupportFeedback: function() {
+                    document.getElementById('supportDetail').value = "";
+                    closeDrawer('drawer-support');
+                    showToast(i18n[AppState.lang].toast_support_success, 'success');
+                },
+                copyServiceId: function() {
+                    if (tg && tg.copyTextToClipboard) {
+                        tg.copyTextToClipboard('@Snap_Premium_Bot');
+                    }
+                    showToast(AppState.lang === 'zh' ? '📋 客服 ID 已成功扣入真机剪贴板' : '📋 Support ID successfully copied.', 'success');
+                },
+                toggleLanguage: function() {
+                    Haptics.light();
+                    AppState.lang = (AppState.lang === 'zh') ? 'en' : 'zh';
+                    localStorage.setItem('snap_lang', AppState.lang);
+                    applyI18n();
+                    showToast(AppState.lang === 'zh' ? '🇨🇳 语言已切换为简体中文' : '🇺🇸 Language switched to English');
+                    const adTag = document.getElementById('ad-countdown-tag');
+                    if (adTag && AppState.adCountdown > 0) adTag.textContent = `⏳ ${i18n[AppState.lang].ad_remaining} ${AppState.adCountdown} s`;
+                },
+                toggleManualTheme: function() {
+                    if (isTelegramEnv) return;
+                    Haptics.light(); AppState.theme = (AppState.theme === 'dark') ? 'light' : 'dark';
+                    localStorage.setItem('snap_theme', AppState.theme); applyThemeOutput();
+                },
+                handleSettingsThemeClick: function() {
+                    if (isTelegramEnv) showToast(AppState.lang === 'zh' ? '💡 系统外观已由 Telegram 原生环境自动化接管' : '💡 Appearance is automatically managed by Telegram Native App.', 'light');
+                    else this.toggleManualTheme();
+                },
+                switchTab: function(tabId) {
+                    if (AppState.activeTab === tabId) return;
+                    Haptics.light(); AppState.activeTab = tabId;
+                    ['home', 'mine'].forEach(id => {
+                        const t = document.getElementById(`tab-${id}`), v = document.getElementById(`view-${id}`);
+                        if(id === tabId) {
+                            t.className = "relative flex flex-col items-center justify-center w-14 h-9 transition-all duration-200 text-emerald-600 dark:text-emerald-400 scale-105 focus:ring-2 focus:ring-emerald-500 outline-none";
+                            t.querySelector('.indicator-dot').classList.remove('hidden'); v.classList.remove('hidden');
+                        } else {
+                            t.className = "relative flex flex-col items-center justify-center w-14 h-9 transition-all duration-200 text-zinc-400 dark:text-zinc-500 hover:text-zinc-700 dark:hover:text-zinc-400 scale-100 focus:ring-2 focus:ring-emerald-500 outline-none";
+                            t.querySelector('.indicator-dot').classList.add('hidden'); v.classList.add('hidden');
+                        }
+                    });
+                },
+                handleSettingsClearCache: function() {
+                    showToast(AppState.lang === 'zh' ? '🧹 本地 0.42 MB 沙盒流缓存数据已全量释放' : '🧹 Safely cleared 0.42 MB runtime buffer storage.', 'success');
+                },
+                triggerHistoryReExtract: function(type) { closeDrawer('drawer-history'); renderFinalResultPanel(type + '_forced'); },
+                showToast, handleSmartPaste, handleStartParseClick, renderFinalResultPanel, resetParsePipeline, openDrawer, closeDrawer, renderHistoryList
+            };
+
+            setupFallbackThemeButton(); applyThemeOutput(); applyI18n();
+            
+        })(window);
+    </script>
+</body>
+</html>
